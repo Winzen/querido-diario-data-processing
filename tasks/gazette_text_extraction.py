@@ -193,7 +193,6 @@ def upload_gazette_raw_text(gazette: Dict, storage):
     """
     Define gazette raw text
     """
-    #
     file_raw_txt = Path(gazette["file_path"]).with_suffix(".txt").as_posix()
     storage.upload_content(file_raw_txt, gazette["source_text"])
     logging.debug(f"file_raw_txt uploaded {file_raw_txt}")
@@ -271,10 +270,3 @@ def set_gazette_as_processed(gazette: Dict, database: DatabaseInterface) -> None
     data = {"id": id, "file_checksum": checksum}
     logging.debug(f"Marking {id}({checksum}) as processed")
     database.update(command, data)
-
-
-
-
-
-
-
