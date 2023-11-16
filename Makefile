@@ -27,8 +27,7 @@ ELASTICSEARCH_PORT2 ?= 9300
 ELASTICSEARCH_CONTAINER_NAME ?= queridodiario-elasticsearch
 APACHE_TIKA_CONTAINER_NAME ?= queridodiario-apache-tika-server
 
-run-command=(podman run --rm -ti --volume $(PWD):/mnt/code:rw \
-	--pod $(POD_NAME) \
+run-command=(docker  run --rm -ti --volume $(PWD):/mnt/code:rw \
 	--env PYTHONPATH=/mnt/code \
 	--env POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
 	--env POSTGRES_USER=$(POSTGRES_USER) \
@@ -37,8 +36,7 @@ run-command=(podman run --rm -ti --volume $(PWD):/mnt/code:rw \
 	--env POSTGRES_PORT=$(POSTGRES_PORT) \
 	$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) $1)
 
-wait-for=(podman run --rm -ti --volume $(PWD):/mnt/code:rw \
-	--pod $(POD_NAME) \
+wait-for=(docker  run --rm -ti --volume $(PWD):/mnt/code:rw \
 	--env PYTHONPATH=/mnt/code \
 	--env POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
 	--env POSTGRES_USER=$(POSTGRES_USER) \
@@ -49,19 +47,19 @@ wait-for=(podman run --rm -ti --volume $(PWD):/mnt/code:rw \
 
 .PHONY: black
 black:
-	podman run --rm -ti --volume $(PWD):/mnt/code:rw \
+	docker  run --rm -ti --volume $(PWD):/mnt/code:rw \
 		--env PYTHONPATH=/mnt/code \
 		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) \
 		black .
 
 .PHONY: build-devel
 build-devel:
-	podman build --tag $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) \
+	docker  build --tag $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) \
 		-f scripts/Dockerfile $(PWD)
 
 .PHONY: build-tika-server
 build-tika-server:
-	podman build --tag $(IMAGE_NAMESPACE)/$(APACHE_TIKA_IMAGE_NAME):$(APACHE_TIKA_IMAGE_TAG) \
+	docker  build --tag $(IMAGE_NAMESPACE)/$(APACHE_TIKA_IMAGE_NAME):$(APACHE_TIKA_IMAGE_TAG) \
 		-f scripts/Dockerfile_apache_tika $(PWD)
 
 .PHONY: build
@@ -69,23 +67,23 @@ build: build-devel build-tika-server
 
 .PHONY: login
 login:
-	podman login --username $(REGISTRY_USER) --password "$(REGISTRY_PASSWORD)" https://index.docker.io/v1/
+	docker  login --username $(REGISTRY_USER) --password "$(REGISTRY_PASSWORD)" https://index.docker.io/v1/
 
 .PHONY: publish
 publish:
-	podman tag $(IMAGE_NAMESPACE)/$(IMAGE_NAME):${IMAGE_TAG} $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell date --rfc-3339=date --utc)
-	podman push $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell date --rfc-3339=date --utc)
-	podman push $(IMAGE_NAMESPACE)/$(IMAGE_NAME):${IMAGE_TAG}
+	docker  tag $(IMAGE_NAMESPACE)/$(IMAGE_NAME):${IMAGE_TAG} $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell date --rfc-3339=date --utc)
+	docker  push $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell date --rfc-3339=date --utc)
+	docker  push $(IMAGE_NAMESPACE)/$(IMAGE_NAME):${IMAGE_TAG}
 
 .PHONY: destroy
 destroy:
-	podman rmi --force $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG)
+	docker  rmi --force $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 destroy-pod:
-	podman pod rm --force --ignore $(POD_NAME)
+	docker  pod rm --force  $(POD_NAME)
 
 create-pod: destroy-pod
-	podman pod create -p $(POSTGRES_PORT):$(POSTGRES_PORT) \
+	docker  pod create -p $(POSTGRES_PORT):$(POSTGRES_PORT) \
 					  -p $(ELASTICSEARCH_PORT1):$(ELASTICSEARCH_PORT1) \
 					  -p $(STORAGE_PORT):$(STORAGE_PORT) \
 	                  --name $(POD_NAME)
@@ -124,21 +122,18 @@ retest-tika:
 	$(call run-command, python -m unittest -f tests/text_extraction_tests.py)
 
 start-apache-tika-server:
-	podman run -d --pod $(POD_NAME) --name $(APACHE_TIKA_CONTAINER_NAME) \
-    	$(IMAGE_NAMESPACE)/$(APACHE_TIKA_IMAGE_NAME):$(APACHE_TIKA_IMAGE_TAG) \
-		java -jar /tika-server.jar
+	docker run -d -p 9998:9998 --rm --name tika apache/tika:1.28.4
 
 stop-apache-tika-server:
-	podman stop --ignore $(APACHE_TIKA_CONTAINER_NAME)
-	podman rm --force --ignore $(APACHE_TIKA_CONTAINER_NAME)
+	docker  stop  $(APACHE_TIKA_CONTAINER_NAME)
+	docker  rm --force  $(APACHE_TIKA_CONTAINER_NAME)
 
 .PHONY: apache-tika-server
 apache-tika-server: stop-apache-tika-server start-apache-tika-server
 
 
 shell: set-run-variable-values
-	podman run --rm -ti --volume $(PWD):/mnt/code:rw \
-		--pod $(POD_NAME) \
+	docker  run --rm -ti --volume $(PWD):/mnt/code:rw \
 		--env PYTHONPATH=/mnt/code \
 		--env-file envvars \
 		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) bash
@@ -151,46 +146,46 @@ coverage: prepare-test-env
 
 .PHONY: stop-storage
 stop-storage:
-	podman rm --force --ignore $(STORAGE_CONTAINER_NAME)
+	docker  rm --force  $(STORAGE_CONTAINER_NAME)
 
 .PHONY: storage
 storage: stop-storage start-storage wait-storage
 
 start-storage:
-	podman run -d --rm -ti \
-		--name $(STORAGE_CONTAINER_NAME) \
-		--pod $(POD_NAME) \
-		-e MINIO_ACCESS_KEY=$(STORAGE_ACCESS_KEY) \
-		-e MINIO_SECRET_KEY=$(STORAGE_ACCESS_SECRET) \
-		-e MINIO_DEFAULT_BUCKETS=$(STORAGE_BUCKET):public \
-        $(STORAGE_IMAGE)
+	docker run -d --rm -ti \
+        --name queridodiario-storage \
+        -p 127.0.0.1:9000:9000\
+        -e MINIO_ACCESS_KEY=minio-access-key \
+        -e MINIO_SECRET_KEY=minio-secret-key \
+        -e MINIO_DEFAULT_BUCKETS=queridodiariobucket:public \
+        docker.io/bitnami/minio:2021.4.6
 
 wait-storage:
 	$(call wait-for, localhost:9000)
 
 .PHONY: stop-database
 stop-database:
-	podman rm --force --ignore $(DATABASE_CONTAINER_NAME)
+	docker  rm --force  $(DATABASE_CONTAINER_NAME)
 
 .PHONY: database
 database: stop-database start-database wait-database
 
 start-database:
-	podman run -d --rm -ti \
-		--name $(DATABASE_CONTAINER_NAME) \
-		--pod $(POD_NAME) \
-		-e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
-		-e POSTGRES_USER=$(POSTGRES_USER) \
-		-e POSTGRES_DB=$(POSTGRES_DB) \
-		$(POSTGRES_IMAGE)
+	docker run -d --rm -ti \
+        --name queridodiario-db \
+        -p 127.0.0.1:5432:5432\
+        -e POSTGRES_PASSWORD=queridodiario \
+        -e POSTGRES_USER=queridodiario \
+        -e POSTGRES_DB=queridodiariodb \
+        docker.io/postgres:10
 
 wait-database:
 	$(call wait-for, localhost:5432)
 
 load-database: set-run-variable-values
 ifneq ("$(wildcard $(DATABASE_RESTORE_FILE))","")
-	podman cp $(DATABASE_RESTORE_FILE) $(DATABASE_CONTAINER_NAME):/mnt/dump_file
-	podman exec $(DATABASE_CONTAINER_NAME) bash -c "pg_restore -v -c -h localhost -U $(POSTGRES_USER) -d $(POSTGRES_DB) /mnt/dump_file || true"
+	docker  cp $(DATABASE_RESTORE_FILE) $(DATABASE_CONTAINER_NAME):/mnt/dump_file
+	docker  exec $(DATABASE_CONTAINER_NAME) bash -c "pg_restore -v -c -h localhost -U $(POSTGRES_USER) -d $(POSTGRES_DB) /mnt/dump_file || true"
 else
 	@echo "cannot restore because file does not exists '$(DATABASE_RESTORE_FILE)'"
 	@exit 1
@@ -204,17 +199,15 @@ set-run-variable-values:
 
 .PHONY: sql
 sql: set-run-variable-values
-	podman run --rm -ti \
-		--pod $(POD_NAME) \
+	docker  run --rm -ti \	
 		$(POSTGRES_IMAGE) psql -h localhost -U $(POSTGRES_USER) $(POSTGRES_DB)
 
 .PHONY: setup
-setup: set-run-variable-values create-pod storage apache-tika-server elasticsearch database
+setup: start-apache-tika-server start-storage start-elasticsearch start-database
 
 .PHONY: re-run
 re-run: set-run-variable-values
-	podman run --rm -ti --volume $(PWD):/mnt/code:rw \
-		--pod $(POD_NAME) \
+	docker  run --rm -ti --net=host --volume $(PWD):/mnt/code:rw \
 		--env PYTHONPATH=/mnt/code \
 		--env-file envvars \
 		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) python main
@@ -224,33 +217,32 @@ run: setup re-run
 
 .PHONY: shell-run
 shell-run: set-run-variable-values
-	podman run --rm -ti --volume $(PWD):/mnt/code:rw \
-		--pod $(POD_NAME) \
+	docker  run --rm -ti --volume $(PWD):/mnt/code:rw \
 		--env PYTHONPATH=/mnt/code \
 		--env-file envvars \
-		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) bash
+		$(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(IMAGE_TAG) 
 
 .PHONY: shell-database
 shell-database: set-run-variable-values
-	podman exec -it $(DATABASE_CONTAINER_NAME) \
+	docker  exec -it $(DATABASE_CONTAINER_NAME) \
 	    psql -h localhost -d $(POSTGRES_DB) -U $(POSTGRES_USER)
 
 elasticsearch: stop-elasticsearch start-elasticsearch wait-elasticsearch
 
 start-elasticsearch:
-	podman run -d --rm -ti \
-		--name $(ELASTICSEARCH_CONTAINER_NAME) \
-		--pod $(POD_NAME) \
-		--env discovery.type=single-node \
-		docker.io/elasticsearch:7.9.1
+	docker run -d --rm -ti \
+        --name queridodiario-elasticsearch \
+        -p 127.0.0.1:9200:9200\
+        --env discovery.type=single-node \
+        docker.io/elasticsearch:7.9.1
 
 stop-elasticsearch:
-	podman rm --force --ignore $(ELASTICSEARCH_CONTAINER_NAME)
+	docker  rm --force  $(ELASTICSEARCH_CONTAINER_NAME)
 
 wait-elasticsearch:
 	$(call wait-for, localhost:9200)
 
 .PHONY: publish-tag
 publish-tag:
-	podman tag $(IMAGE_NAMESPACE)/$(IMAGE_NAME):${IMAGE_TAG} $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell git describe --tags)
-	podman push $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell git describe --tags)
+	docker  tag $(IMAGE_NAMESPACE)/$(IMAGE_NAME):${IMAGE_TAG} $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell git describe --tags)
+	docker  push $(IMAGE_NAMESPACE)/$(IMAGE_NAME):$(shell git describe --tags)

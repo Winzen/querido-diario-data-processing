@@ -65,7 +65,7 @@ class Diario:
         self.file_url = pdf_path["file_url"]
         self.file_path = pdf_path["file_path"]
         self.file_checksum = self.md5sum(BytesIO(self.source_text.encode(encoding='UTF-8')))
-        self.id = int(str(self.territory_id) + "".join(re.findall("\d+", self.file_checksum)))
+        self.id = int(str(self.territory_id) + "".join(re.findall("\d+", self.file_checksum))[-3:])
         self.scraped_at = datetime.utcnow()
         self.created_at = self.scraped_at
         # file_endpoint = gazette_text_extraction.get_file_endpoint()

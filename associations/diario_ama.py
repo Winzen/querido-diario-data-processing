@@ -66,7 +66,6 @@ def extrair_diarios_municipais(texto_diario: str, pdf_path: dict, territories: l
     diarios = []
     for municipio, diario in texto_diarios.items():
         diarios.append(Diario(municipio, ama_header, diario, pdf_path, territories).__dict__)
-
     return diarios
 
 

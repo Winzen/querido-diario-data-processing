@@ -34,11 +34,10 @@ def extract_text_from_gazettes(
         try:
 
             if str(gazette["territory_id"][-4:]).strip() == "0000":
-
+                
                 association_ids = try_process_gazette_association_file(
                     gazette, database, storage, index, text_extractor, territories
                 )
-
             else:
                 processed_gazette = try_process_gazette_file(
                     gazette, database, storage, index, text_extractor
@@ -55,7 +54,6 @@ def extract_text_from_gazettes(
                association_ids.clear()
 
             else:
-                
                 ids.append(processed_gazette["file_checksum"])
         
         
@@ -97,13 +95,15 @@ def try_process_gazette_association_file(
 
     logging.debug(f"Processing gazette {gazette['file_path']}")
     pdf = download_gazette_file(gazette, storage)
+    get_gazette_text_and_define_url(gazette, pdf, text_extractor)
+    upload_gazette_raw_text(gazette, storage)
     pdf_txt = try_to_extract_content(pdf, text_extractor)
     diarios = extrarir_diarios(
         pdf_text=pdf_txt,
         path_pdf=gazette,
         territories=territories
     )
-
+    
     for diario in diarios:
 
         storage.upload_content(diario["file_raw_txt"], diario["source_text"])
