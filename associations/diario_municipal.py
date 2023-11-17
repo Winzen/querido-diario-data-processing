@@ -68,7 +68,7 @@ class Diario:
         self.id = gazette["id"]
         self.scraped_at = datetime.utcnow()
         self.created_at = self.scraped_at
-        self.file_raw_txt = f"docke{self.territory_id}/{self.date}/{self.file_checksum}.txt"
+        self.file_raw_txt = f"/{self.territory_id}/{self.date}/{self.file_checksum}.txt"
         self.processed = True
         self.url = self.file_raw_txt
 
