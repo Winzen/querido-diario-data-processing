@@ -9,7 +9,7 @@ re_nomes_municipios = (
     r"ESTADO DE ALAGOAS(?:| )\n{1,2}PREFEITURA MUNICIPAL DE (.*\n{0,2}(?!VAMOS).*$)\n\s(?:\s|SECRETARIA)")
 
 
-def extrair_diarios_municipais(texto_diario: str, pdf_path: dict, territories: list):
+def extrair_diarios_municipais(texto_diario: str, gazette: dict, territories: list):
     texto_diario_slice = texto_diario.lstrip().splitlines()
 
     # Processamento
@@ -65,7 +65,7 @@ def extrair_diarios_municipais(texto_diario: str, pdf_path: dict, territories: l
 
     diarios = []
     for municipio, diario in texto_diarios.items():
-        diarios.append(Diario(municipio, ama_header, diario, pdf_path, territories).__dict__)
+        diarios.append(Diario(municipio, ama_header, diario, gazette, territories).__dict__)
     return diarios
 
 

@@ -49,7 +49,7 @@ class Diario:
         "Dezembro": 12,
     }
 
-    def __init__(self, municipio: Municipio, cabecalho: str, texto: str, pdf_path: dict, territories: list):
+    def __init__(self, municipio: Municipio, cabecalho: str, texto: str, gazette: dict, territories: list):
         
        
         self.territory_id, self.territory_name, self.state_code = get_territorie_info(
@@ -62,14 +62,13 @@ class Diario:
         self.edition_number = cabecalho.split("Nº")[1].strip()
         self.is_extra_edition = False
         self.power = "executive_legislative"
-        self.file_url = pdf_path["file_url"]
-        self.file_path = pdf_path["file_path"]
+        self.file_url = gazette["file_url"]
+        self.file_path = gazette["file_path"]
         self.file_checksum = self.md5sum(BytesIO(self.source_text.encode(encoding='UTF-8')))
-        self.id = int(str(self.territory_id) + "".join(re.findall("\d+", self.file_checksum))[-3:])
+        self.id = gazette["id"]
         self.scraped_at = datetime.utcnow()
         self.created_at = self.scraped_at
-        # file_endpoint = gazette_text_extraction.get_file_endpoint()
-        self.file_raw_txt = f"/{self.territory_id}/{self.date}/{self.file_checksum}.txt"
+        self.file_raw_txt = f"docke{self.territory_id}/{self.date}/{self.file_checksum}.txt"
         self.processed = True
         self.url = self.file_raw_txt
 

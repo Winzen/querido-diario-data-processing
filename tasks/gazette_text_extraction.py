@@ -100,13 +100,13 @@ def try_process_gazette_association_file(
     pdf_txt = try_to_extract_content(pdf, text_extractor)
     diarios = extrarir_diarios(
         pdf_text=pdf_txt,
-        path_pdf=gazette,
+        gazette=gazette,
         territories=territories
     )
     
     for diario in diarios:
 
-        storage.upload_content(diario["file_raw_txt"], diario["source_text"])
+        upload_gazette_raw_text_association(diario, storage)
         index.index_document(diario, document_id=diario["file_checksum"])
 
     delete_gazette_files(pdf)
@@ -199,6 +199,14 @@ def upload_gazette_raw_text(gazette: Dict, storage):
     file_endpoint = get_file_endpoint()
     gazette["file_raw_txt"] = f"{file_endpoint}/{file_raw_txt}"
 
+def upload_gazette_raw_text_association(gazette: Dict, storage):
+    """
+    Define gazette raw text and define the url to access the file in the storage
+    """
+    storage.upload_content(gazette["file_raw_txt"], gazette["source_text"])
+    file_endpoint = get_file_endpoint()
+    gazette["file_raw_txt"] = f"{file_endpoint}/{gazette['file_raw_txt']}"
+    gazette["url"] = f"{file_endpoint}/{gazette['file_path']}"
 
 def get_gazette_text_and_define_url(
     gazette: Dict, gazette_file: str, text_extractor: TextExtractorInterface
